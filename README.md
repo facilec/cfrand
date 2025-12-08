@@ -1,12 +1,12 @@
 # cfrand
 
-A Cloudflare Worker API that mixes high-volume human-influenced telemetry (Cloudflare Radar HTTP/DNS insights, GitHub events, Reddit frontpage, OpenStreetMap changesets, latest Bitcoin/Ethereum blocks) with first-class randomness sources (Cloudflare Web Crypto RNG + drand beacon). Each call fetches fresh payloads, concatenates the raw bytes, and runs a single SHA3-512 hash to yield a base64/hex digest and per-source diagnostics.
+A Cloudflare Worker API that mixes high-volume human-influenced telemetry (Cloudflare Radar HTTP/DNS insights, AskReddit latest posts, OpenStreetMap changesets, latest Bitcoin/Ethereum blocks) with first-class randomness sources (Cloudflare Web Crypto RNG + drand beacon). Each call fetches fresh payloads, concatenates the raw bytes, and runs a single SHA3-512 hash to yield a base64/hex digest and per-source diagnostics.
 
 ## Features
 
-- **Multiple entropy feeds:** Cloudflare Radar summaries/timeseries, GitHub public events, OpenStreetMap changesets, Reddit front page, Bitcoin/Ethereum latest blocks, plus drand.
+- **Multiple entropy feeds:** Cloudflare Radar summaries/timeseries, AskReddit latest posts, OpenStreetMap changesets, Bitcoin/Ethereum latest blocks, plus drand.
 - **Edge-native randomness:** Includes 512 bits from `crypto.getRandomValues` and enforces drand+Radar availability.
-- **Single hash extraction:** Concatenates all successful payloads and computes SHA3-512 (via `@noble/hashes`).
+- **Single hash extraction:** Concatenates all successful payloads and computes SHA-512 via Workers Web Crypto (with optional SHA3-512 fallback).
 - **Operational telemetry:** Response lists each source (success/failure, byte count, duration), hash provider, and error counts.
 
 ## Deploying to Cloudflare

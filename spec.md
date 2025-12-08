@@ -1,7 +1,7 @@
 # Random Generator Worker Spec
 
 ## Goal
-Provide a Cloudflare Worker endpoint that harvests human-influenced telemetry (pageviews, social feeds, DNS/traffic rankings, collaborative edits) plus cryptographic anchors (drand + Bitcoin + Ethereum blocks), concatenates the **full raw payloads** from every successful fetch, and runs a single SHA3-512 hash over the combined byte stream. The output must always include drand (2^256 entropy guarantee) and fail if Cloudflare Radar or drand are unavailable. When in doubt, bring in **more** public data: every Radar request should pull at least 512 entries/items so each fetch yields substantial entropy.
+Provide a Cloudflare Worker endpoint that harvests human-influenced telemetry (pageviews, social feeds, DNS/traffic rankings, collaborative edits) plus cryptographic anchors (drand + Bitcoin + Ethereum blocks), concatenates the **full raw payloads** from every successful fetch, and runs a single SHA-512 hash (Workers Web Crypto) over the combined byte stream (with an opt-in SHA3-512 fallback). The output must always include drand (2^256 entropy guarantee) and fail if Cloudflare Radar or drand are unavailable. When in doubt, bring in **more** public data: every Radar request should pull at least 512 entries/items so each fetch yields substantial entropy.
 
 ## HTTP API
 - **Route**: `GET /api/random`
@@ -35,7 +35,7 @@ Provide a Cloudflare Worker endpoint that harvests human-influenced telemetry (p
    - Count failures.
    - Immediately `return 500` if drand or Cloudflare Radar failed, or if total failures ≥ 3.
 6. If hashing may proceed, concatenate all collected byte arrays into a single `Uint8Array`.
-7. Run SHA3-512 once (via `@noble/hashes/sha3`), producing both hex + base64 strings.
+7. Run a single digest over the combined bytes (default `crypto.subtle.digest('SHA-512', …)`; opt-in `@noble/hashes/sha3` SHA3-512 when `USE_SHA3` flag is set), producing both hex + base64 strings.
 8. Log a summary entry: `console.log({hash: hex, successes, failures})`, along with per-source outcomes (status, bytes, url, duration). Always log failures even when total ≤3.
 9. Respond with JSON containing hashes, error count, per-source diagnostics (success/failure, byte counts, HTTP status, timestamps).
 
@@ -45,7 +45,7 @@ Provide a Cloudflare Worker endpoint that harvests human-influenced telemetry (p
 | `drand` | `https://api.drand.sh/public/latest` | Cryptographic randomness anchor (≥2^256 security). | Mandatory success. Hash over JSON text exactly as received. |
 | `cf_crypto_random_512` | `crypto.getRandomValues(64 bytes)` | Workers Web Crypto API random generator ensures local 512-bit entropy per request. | Must always succeed; no network required. |
 | `cloudflare_radar` | `https://api.cloudflare.com/client/v4/radar/http/top/locations?limit=50&dateStart=…&dateEnd=…` | Global HTTP traffic rankings derived from billions of user requests (captures mass human behavior). | Requires `Authorization: Bearer env.CLOUDFLARE_TOKEN`; dynamic `dateStart/End` (previous 24h). Mandatory success. |
-| `github_events` | `https://api.github.com/events` with `User-Agent: cfrand-worker` | OSS collaboration feed. | Rate-limited; treat 403/429 as failure. |
+| `reddit_askreddit_new` | `https://www.reddit.com/r/AskReddit/new.json?limit=25` | Highly active community; latest Q/A threads involve broad human participation. | Parse JSON into `created|author|title` lines (cap at 15) for compactness. |
 | `openstreetmap_changesets` | `https://api.openstreetmap.org/api/0.6/changesets?limit=50` | Geodata edits from global contributors. | XML text. |
 | `bitcoin_latest_block` | `https://blockchain.info/latestblock` | Crypto network consensus driven by miners/traders. | JSON block header; contains 256-bit hash. |
 | `ethereum_latest_block` | `https://api.blockchair.com/ethereum/blocks?limit=1` | ETH block digest reflecting network participation. | JSON; include entire payload. |

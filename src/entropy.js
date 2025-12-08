@@ -89,6 +89,8 @@ function buildSourceFetchers(env) {
     })
   );
 
+  fetchers.push((logger) => fetchAskReddit(logger));
+
   fetchers.push((logger) =>
     executeFetch({
       id: 'bitcoin_latest_block',
@@ -108,6 +110,75 @@ function buildSourceFetchers(env) {
   );
 
   return fetchers;
+}
+
+async function fetchAskReddit(logger) {
+  const id = 'reddit_askreddit_new';
+  const url = 'https://www.reddit.com/r/AskReddit/new.json?limit=25';
+  const started = Date.now();
+  const init = {
+    headers: {
+      'User-Agent': 'cfrand-worker',
+      Accept: 'application/json',
+    },
+    signal: createTimeoutSignal(REQUEST_TIMEOUT_MS),
+  };
+
+  try {
+    const resp = await fetch(url, init);
+    const duration = Date.now() - started;
+    if (!resp.ok) {
+      return {
+        id,
+        ok: false,
+        status: resp.status,
+        error: `HTTP ${resp.status}`,
+        duration_ms: duration,
+        tags: ['reddit'],
+        bytes: 0,
+      };
+    }
+
+    const body = await resp.text();
+    let summary = body;
+    try {
+      const parsed = JSON.parse(body);
+      const children = Array.isArray(parsed?.data?.children) ? parsed.data.children : [];
+      const entries = children.slice(0, 15).map((child) => {
+        const data = child?.data || {};
+        const title = (data.title || '').replace(/\s+/g, ' ').trim();
+        const author = data.author || 'unknown';
+        const created = data.created_utc || 0;
+        return `${created}|${author}|${title}`;
+      });
+      summary = entries.join('\n');
+    } catch (error) {
+      // Fall back to raw body if parsing fails
+    }
+
+    const encoded = encoder.encode(summary);
+    const result = {
+      id,
+      ok: true,
+      bytes: encoded.length,
+      duration_ms: duration,
+      fetched_at: new Date().toISOString(),
+      tags: ['reddit'],
+      data: encoded,
+    };
+    logger?.log?.('entropy-source', { id, bytes: encoded.length, duration });
+    return result;
+  } catch (error) {
+    const duration = Date.now() - started;
+    return {
+      id,
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+      duration_ms: duration,
+      tags: ['reddit'],
+      bytes: 0,
+    };
+  }
 }
 
 function buildRadarFetchers(env) {
