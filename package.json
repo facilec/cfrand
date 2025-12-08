@@ -1,0 +1,16 @@
+{
+  "name": "cfrand",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "start": "node local/server.js"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.3.3"
+  },
+  "devDependencies": {
+    "wrangler": "^4.53.0"
+  }
+}

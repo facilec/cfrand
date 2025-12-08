@@ -1,0 +1,6 @@
+name = "cfrand"
+main = "src/worker.js"
+compatibility_date = "2025-02-15"
+
+[vars]
+# CLOUDFLARE_TOKEN must be set via `wrangler secret put` before deploy.
