@@ -35,6 +35,20 @@ curl -s https://<your-worker>.workers.dev/api/random | jq
 
 Both local modes share the same entropy pipeline, so you can test without deploying.
 
+## Python usage
+
+Set `CFRAND_URL` in `.env`. The Python helper lives at `client/cfrand.py` and fetches once at startup, then XORs the server hash with `os.urandom(64)` on every call.
+
+Example:
+
+```python
+import client.cfrand as cfrand
+
+print(cfrand.random())
+print(cfrand.randint(1, 100))
+print(cfrand.randrange(10, 100, 5))
+```
+
 ## Configuration
 
 | Variable | Description |
@@ -69,7 +83,7 @@ Both local modes share the same entropy pipeline, so you can test without deploy
   "sources": [
     {"id": "cf_crypto_random_512", "ok": true, "bytes": 64, ...},
     {"id": "cloudflare_radar_http_summary_tls_version", "ok": true, ...},
-    {"id": "github_events", "ok": true, ...},
+    {"id": "reddit_askreddit_new", "ok": true, ...},
     ...
   ]
 }
